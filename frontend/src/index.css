@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* Paleta "plumagem": as cores dos próprios periquitos.
+   verde = confirmado · azul = João · rosa = Carol · sol = máscara amarela do periquito (ações) */
+@theme {
+  --color-paper: #f7f9ef;
+  --color-panel: #ffffff;
+  --color-ink: #1f2d24;
+  --color-muted: #5f6f63;
+  --color-line: #dfe6d3;
+  --color-green: #2e9e4f;
+  --color-green-soft: #dcf1e1;
+  --color-blue: #2b7bd9;
+  --color-blue-soft: #dbe9fa;
+  --color-pink: #d9468d;
+  --color-pink-soft: #fadced;
+  --color-sun: #f7c531;
+  --color-sun-soft: #fdf1c6;
+  --color-danger: #c2412d;
+
+  --font-display: "Baloo 2", ui-rounded, system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #121a15;
+    --color-panel: #1a241e;
+    --color-ink: #eef3e6;
+    --color-muted: #a3b2a6;
+    --color-line: #2b3830;
+    --color-green: #4cc06d;
+    --color-green-soft: #1d3a26;
+    --color-blue: #5a9eef;
+    --color-blue-soft: #1b2e45;
+    --color-pink: #f06fae;
+    --color-pink-soft: #43213a;
+    --color-sun: #f7c531;
+    --color-sun-soft: #3b3416;
+    --color-danger: #ff7a62;
+  }
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* iPhone: respeita o notch e a barra de gesto */
+.safe-top {
+  padding-top: max(env(safe-area-inset-top), 12px);
+}
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-sun);
+  outline-offset: 2px;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px; /* evita o zoom automático do Safari ao focar */
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.animate-sheet {
+  animation: sheet-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet {
+    animation: none;
+  }
+}
