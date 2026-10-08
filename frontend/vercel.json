@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://SEU-APP.onrender.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://api-casal-de-periquito.onrender.com/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
