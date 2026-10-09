@@ -86,9 +86,11 @@ Ao criar ou editar um evento, o formulário consulta as sobreposições com **qu
 - Ao tocar na notificação, o app abre direto no evento (`/evento/:id`), com os botões **Aprovar**, **Recusar** e **Sugerir horário**.
 - Se uma assinatura de notificação responder 404 ou 410, ela é apagada automaticamente.
 
-**Lembretes:** eventos confirmados avisam `REMINDER_MINUTES` antes do início (padrão 30; 0 = na hora); eventos de dia inteiro avisam às 8h do dia. "Nosso" avisa os dois; "só meu" avisa só o dono. Um lembrete por evento; mudar o horário gera um novo. Quem dispara é o cron-job.org, chamando `GET /api/cron/reminders?token=CRON_SECRET` a cada 5 minutos.
+**Resumo do dia:** às `DIGEST_HOUR` (padrão 8h), cada um recebe "Hoje: Academia 18h, Cinema 21h" com os eventos confirmados do dia (os "nossos" e os "só meus" dele) e quantos pedidos esperam resposta. Dia vazio não gera aviso; se o servidor ficou fora do ar, o resumo é enviado até as 12h.
 
-Notificações enviadas: lembrete do evento · novo pedido · aprovado · recusado (com comentário) · sugestão de horário · horário alterado · cancelado · pedido de redefinição de senha.
+**Lembretes:** eventos confirmados com horário avisam `REMINDER_MINUTES` antes do início (padrão 30; 0 = na hora); eventos de dia inteiro aparecem só no resumo. "Nosso" avisa os dois; "só meu" avisa só o dono. Um lembrete por evento; mudar o horário gera um novo. Quem dispara é o cron-job.org, chamando `GET /api/cron/reminders?token=CRON_SECRET` a cada 5 minutos.
+
+Notificações enviadas: resumo do dia · lembrete do evento · novo pedido · aprovado · recusado (com comentário) · sugestão de horário · horário alterado · cancelado · pedido de redefinição de senha.
 
 ---
 
@@ -114,7 +116,7 @@ Notificações enviadas: lembrete do evento · novo pedido · aprovado · recusa
 ```
 users
   id, slug ('joao'|'carol') UNIQUE, display_name, password_hash,
-  whatsapp (E.164), avatar BYTEA NULL, avatar_mime, created_at
+  whatsapp (E.164), avatar BYTEA NULL, avatar_mime, last_digest_on NULL, created_at
 
 sessions
   id, user_id → users, token_hash UNIQUE, created_at, expires_at, last_seen_at
@@ -183,7 +185,7 @@ cron-job.org ── GET /api/cron/reminders a cada 5 min ──▶ Render
 - **Back:** FastAPI + SQLAlchemy 2 + Alembic + psycopg 3 + argon2-cffi + pywebpush.
 - O rewrite da Vercel faz o navegador enxergar um único domínio. Assim o cookie é "de primeira parte" e o Safari não o bloqueia.
 - O comando de start no Render roda `alembic upgrade head` antes de iniciar o `uvicorn`.
-- **Variáveis de ambiente do back:** `DATABASE_URL`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`, `REMINDER_MINUTES`.
+- **Variáveis de ambiente do back:** `DATABASE_URL`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`, `REMINDER_MINUTES`, `DIGEST_HOUR`.
 - **Scripts:** `app.scripts.create_users` (cria João e Carol com nome, WhatsApp e senha inicial), `app.scripts.reset_password <slug>` e `app.scripts.gen_vapid`.
 
 ---

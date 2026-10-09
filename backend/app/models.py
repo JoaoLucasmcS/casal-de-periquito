@@ -26,6 +26,7 @@ class User(Base):
     avatar: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
     avatar_mime: Mapped[str | None] = mapped_column(String(30), nullable=True)
     avatar_updated_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    last_digest_on: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "yyyy-mm-dd" do último resumo
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 

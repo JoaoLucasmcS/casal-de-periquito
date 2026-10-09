@@ -40,6 +40,8 @@ class Settings:
     cookie_secure: bool = os.getenv("COOKIE_SECURE", "true").lower() == "true"
     # Lembrete: quantos minutos antes do início avisar (0 = na hora). Dia inteiro: às 8h do dia.
     reminder_minutes: int = int(os.getenv("REMINDER_MINUTES", "30"))
+    # Hora (de São Paulo) do resumo do dia. Ex.: 8 = 8h da manhã.
+    digest_hour: int = int(os.getenv("DIGEST_HOUR", "8"))
     # Senha da URL que o cron-job.org chama para disparar os lembretes.
     cron_secret: str = os.getenv("CRON_SECRET", "")
     session_days: int = 90

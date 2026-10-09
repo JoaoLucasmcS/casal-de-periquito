@@ -23,3 +23,5 @@ services:
         sync: false
       - key: REMINDER_MINUTES
         value: "30"
+      - key: DIGEST_HOUR
+        value: "8"

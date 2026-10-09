@@ -337,3 +337,72 @@ def test_clean_key_accepts_pasted_line(monkeypatch):
     assert _clean_key("VAPID_PRIVATE_KEY") == "abc123"
     monkeypatch.setenv("VAPID_PRIVATE_KEY", '"abc123"')
     assert _clean_key("VAPID_PRIVATE_KEY") == "abc123"
+
+
+# ---------- resumo do dia ----------
+
+def _at_sp(monkeypatch, hour, minute=0, days=0):
+    """Congela o relógio do cron em um horário de São Paulo."""
+    from app.routers import cron
+    fixed = (datetime.now(SP) + timedelta(days=days)).replace(hour=hour, minute=minute, second=0, microsecond=0)
+    monkeypatch.setattr(cron, "utcnow", lambda: fixed.astimezone(timezone.utc))
+    return fixed
+
+
+def _create_at(client, base, hour, minute=0, kind="shared", title="X", hours=1, all_day=False):
+    start = base.replace(hour=hour, minute=minute)
+    end = start + timedelta(hours=hours)
+    if all_day:
+        start = base.replace(hour=0, minute=0)
+        end = start + timedelta(days=1)
+    return client.post("/api/events", json={"kind": kind, "title": title, "starts_at": start.isoformat(),
+                                            "ends_at": end.isoformat(), "all_day": all_day}).json()
+
+
+def test_daily_digest_at_8(joao, carol, pushes, monkeypatch):
+    base = _at_sp(monkeypatch, 7, 55, days=1)          # amanhã, 7h55
+    _create_at(carol, base, 18, kind="personal", title="Academia", hours=2)
+    cin = _create_at(joao, base, 21, title="Cinema")
+    carol.post(f"/api/events/{cin['id']}/approve")
+    _create_at(joao, base, 0, title="Aniversário da vó", all_day=True, kind="personal")
+    pushes.clear()
+
+    assert _cron().json()["resumos_enviados"] == 0      # antes das 8h
+    _at_sp(monkeypatch, 8, 0, days=1)
+    r = _cron().json()
+    assert r["resumos_enviados"] == 2
+    msgs = {p["to"]: p for p in pushes if p["title"].startswith("Hoje")}
+    assert msgs["carol"]["title"] == "Hoje: Academia 18h, Cinema 21h"
+    assert msgs["joao"]["title"] == "Hoje: Aniversário da vó (dia todo), Cinema 21h"   # Academia é só da Carol
+    pushes.clear()
+    _at_sp(monkeypatch, 8, 5, days=1)
+    assert _cron().json()["resumos_enviados"] == 0      # só uma vez por dia
+    assert not [p for p in pushes if p["title"].startswith("Hoje")]
+
+
+def test_digest_mentions_waiting_requests_and_skips_empty_day(joao, carol, pushes, monkeypatch):
+    base = _at_sp(monkeypatch, 9, 0, days=2)
+    _create_at(joao, base, 20, title="Jantar")          # pendente, esperando a Carol
+    pushes.clear()
+    assert _cron().json()["resumos_enviados"] == 1      # João: nada confirmado e nada esperando → sem resumo
+    (msg,) = pushes
+    assert msg["to"] == "carol" and "1 pedido esperando sua resposta" in msg["body"]
+
+
+def test_digest_not_sent_after_noon(joao, carol, pushes, monkeypatch):
+    base = _at_sp(monkeypatch, 13, 0, days=1)
+    _create_at(carol, base, 18, kind="personal", title="Academia")
+    assert _cron().json()["resumos_enviados"] == 0
+
+
+def test_all_day_event_has_no_separate_reminder(carol, pushes, monkeypatch):
+    base = _at_sp(monkeypatch, 13, 0, days=1)           # depois do horário do resumo
+    _create_at(carol, base, 0, kind="personal", title="Feriado", all_day=True)
+    pushes.clear()
+    assert _cron().json()["lembretes_enviados"] == 0
+
+
+def test_cron_accepts_token_header():
+    r = make_client().get("/api/cron/reminders", headers={"token": "segredo-do-cron"})
+    assert r.status_code == 200 and r.json()["ok"] is True
+    assert make_client().get("/api/cron/reminders", headers={"token": "*segredo-do-cron*"}).status_code == 403

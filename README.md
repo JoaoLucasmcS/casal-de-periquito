@@ -86,6 +86,7 @@ Guarde as duas linhas (`VAPID_PUBLIC_KEY=` e `VAPID_PRIVATE_KEY=`). A privada é
    | `VAPID_SUBJECT` | `mailto:seu-email@gmail.com` (um e-mail **real**; a Apple recusa endereços de exemplo) |
    | `CRON_SECRET` | uma senha inventada só de letras e números, ex.: `periquito8f3k2m9x` |
    | `REMINDER_MINUTES` | `30` (quantos minutos antes do evento chega o lembrete; `0` = na hora) |
+   | `DIGEST_HOUR` | `8` (opcional: hora do resumo do dia, horário de São Paulo) |
    | `PYTHON_VERSION` | `3.12.8` |
 
 4. Faça o deploy. Quando terminar, abra `https://SEU-APP.onrender.com/api/health`.
@@ -133,8 +134,14 @@ as duas coisas: a cada 5 minutos ele chama o endereço que dispara os lembretes,
    - `503`: o `CRON_SECRET` não foi configurado no Render.
 4. Se você já tinha um cronjob para `/api/health`, apague: este substitui.
 
-Como funcionam os lembretes: eventos confirmados (o "nosso" aprovado e o "só meu") avisam `REMINDER_MINUTES`
-antes do início. Eventos de dia inteiro avisam às 8h do dia. O "nosso" avisa os dois; o "só meu" avisa só o dono.
+O token pode ir na URL (`?token=...`) ou num header chamado `token` (seção Headers do cron-job.org).
+Nos dois casos, o valor precisa ser igual ao `CRON_SECRET`, caractere por caractere.
+
+O que esse cronjob dispara:
+- **Resumo do dia**, às 8h (ou `DIGEST_HOUR`): "Hoje: Academia 18h, Cinema 21h", com os eventos confirmados
+  do dia (os "nossos" e os "só meus" de quem recebe) e quantos pedidos esperam resposta. Dia vazio não gera aviso.
+- **Lembrete**, `REMINDER_MINUTES` antes do início (padrão 30): eventos confirmados com horário. O "nosso"
+  avisa os dois; o "só meu" avisa só o dono. Eventos de dia inteiro aparecem só no resumo.
 
 ### 2.7 Instalar nos iPhones (cada um no seu)
 
