@@ -10,7 +10,7 @@ A agenda do João e da Carol: um propõe, o outro aprova. É um app web instalá
 ```
 iPhone (app instalado) ──▶ Vercel (front)
                               └─ /api/* ──▶ Render (FastAPI) ──▶ Supabase (Postgres)
-cron-job.org ── a cada 10 min ──▶ Render /api/health (não deixa o servidor dormir)
+cron-job.org ── a cada 5 min ──▶ Render /api/cron/reminders (lembretes + não deixa o servidor dormir)
 ```
 
 ---
@@ -83,10 +83,16 @@ Guarde as duas linhas (`VAPID_PUBLIC_KEY=` e `VAPID_PRIVATE_KEY=`). A privada é
    | `DATABASE_URL` | a string do Session pooler do Supabase |
    | `VAPID_PUBLIC_KEY` | do passo 2.1 |
    | `VAPID_PRIVATE_KEY` | do passo 2.1 |
-   | `VAPID_SUBJECT` | `mailto:seu-email@gmail.com` |
+   | `VAPID_SUBJECT` | `mailto:seu-email@gmail.com` (um e-mail **real**; a Apple recusa endereços de exemplo) |
+   | `CRON_SECRET` | uma senha inventada só de letras e números, ex.: `periquito8f3k2m9x` |
+   | `REMINDER_MINUTES` | `30` (quantos minutos antes do evento chega o lembrete; `0` = na hora) |
    | `PYTHON_VERSION` | `3.12.8` |
 
-4. Faça o deploy. Quando terminar, abra `https://SEU-APP.onrender.com/api/health`. Deve aparecer `{"ok":true}`.
+4. Faça o deploy. Quando terminar, abra `https://SEU-APP.onrender.com/api/health`.
+   Deve aparecer `{"ok":true,"push_configurado":true}`. Se aparecer `false`, faltam as chaves VAPID.
+
+> As chaves VAPID não podem mudar depois que os celulares ativaram as notificações. Se trocar, cada um
+> precisa ir em Perfil › Desativar › Ativar de novo.
 
 (Também dá para usar o `backend/render.yaml` em **New › Blueprint**.)
 
@@ -112,15 +118,23 @@ O script pergunta o nome, o WhatsApp (com DDD) e a senha de cada um. Rodar de no
 
 Por que o `/api` passa pela Vercel: assim o celular enxerga um único site, e o Safari não bloqueia o cookie de login.
 
-### 2.6 cron-job.org (servidor acordado)
+### 2.6 cron-job.org (lembretes e servidor acordado)
 
-O Render gratuito "dorme" depois de 15 minutos sem uso, e o primeiro acesso depois disso demora perto de um minuto.
+O Render gratuito não roda tarefas sozinho e "dorme" depois de 15 minutos sem uso. O cron-job.org resolve
+as duas coisas: a cada 5 minutos ele chama o endereço que dispara os lembretes, e isso mantém o servidor acordado.
 
 1. Crie uma conta em https://cron-job.org.
 2. **Create cronjob**:
-   - URL: `https://SEU-APP.onrender.com/api/health`
-   - Schedule: a cada 10 minutos
-3. Salve. Um serviço ligado o mês inteiro cabe nas horas grátis do Render.
+   - URL: `https://SEU-APP.onrender.com/api/cron/reminders?token=SEU_CRON_SECRET`
+     (o mesmo valor que você colocou em `CRON_SECRET` no Render)
+   - Schedule: a cada 5 minutos
+3. Salve e use **Test run**. A resposta deve ser `{"ok":true,"lembretes_enviados":0,...}`.
+   - `403`: o token na URL está diferente do `CRON_SECRET`.
+   - `503`: o `CRON_SECRET` não foi configurado no Render.
+4. Se você já tinha um cronjob para `/api/health`, apague: este substitui.
+
+Como funcionam os lembretes: eventos confirmados (o "nosso" aprovado e o "só meu") avisam `REMINDER_MINUTES`
+antes do início. Eventos de dia inteiro avisam às 8h do dia. O "nosso" avisa os dois; o "só meu" avisa só o dono.
 
 ### 2.7 Instalar nos iPhones (cada um no seu)
 
@@ -144,7 +158,27 @@ O Render gratuito "dorme" depois de 15 minutos sem uso, e o primeiro acesso depo
 | Sintoma | Causa provável |
 |---|---|
 | A tela de login demora ou mostra "servidor acordando" | O Render dormiu: confira se o cron-job.org está ativo. |
-| A notificação não chega no iPhone | O app precisa ter sido aberto pelo ícone da tela de início, não pelo Safari. Confira também Ajustes › Notificações › Bobinhos e, em Perfil, se aparece "Ativas neste aparelho". |
+| A notificação não chega no iPhone | Veja a seção 5 abaixo. |
 | O login cai toda hora | O `vercel.json` precisa apontar para o Render. Não chame o Render direto pelo front. |
 | Erro de conexão com o banco no Render | Use a string do **Session pooler** (porta 5432) e confira a senha. |
 | Erro 503 ao ativar as notificações | Faltam `VAPID_PUBLIC_KEY` ou `VAPID_PRIVATE_KEY` no Render. |
+| Lembretes não chegam | Confira o cronjob do passo 2.6 (histórico de execuções no cron-job.org). |
+
+## 5. Notificações não chegam: diagnóstico
+
+Onde está o código: `backend/app/push.py` (envio), `backend/app/routers/push_subs.py` (inscrição dos
+aparelhos e teste), `backend/app/routers/cron.py` (lembretes) e `frontend/src/sw.ts` (recebe no celular).
+
+Faça na ordem, em cada um dos dois iPhones:
+
+1. Abra `https://SEU-APP.onrender.com/api/health`. Precisa mostrar `"push_configurado":true`.
+2. Abra o app **pelo ícone Bobinhos** (no Safari, notificação não funciona).
+3. Vá em **Perfil › Notificações**. Precisa dizer "Ativas neste aparelho" e "1 aparelho seu recebe avisos".
+   Se disser 0 aparelhos, toque em **Ativar neste aparelho**.
+4. Toque em **Enviar notificação de teste** e bloqueie a tela. A mensagem embaixo do botão diz o que aconteceu:
+   - "Enviada para 1 aparelho": o servidor entregou à Apple. Se mesmo assim não aparecer, confira
+     Ajustes › Notificações › Bobinhos (Permitir, Tela Bloqueada e Central ativados) e o modo Foco.
+   - "recusou: 403 ... BadJwtToken" ou "VapidPkHashMismatch": o `VAPID_SUBJECT` não é um e-mail real,
+     ou as chaves mudaram depois da inscrição. Corrija no Render e depois, no app: Desativar › Ativar.
+   - "não conhece nenhum aparelho seu": toque em Ativar neste aparelho.
+5. Os logs do Render (aba **Logs**) mostram cada envio: `Push '...' → usuário 2: 1/1 enviados`.

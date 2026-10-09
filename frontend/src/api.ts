@@ -66,6 +66,8 @@ export const api = {
   vapidKey: () => request<{ key: string }>("GET", "/push/vapid-public-key"),
   subscribe: (sub: PushSubscriptionJSON) => request<void>("POST", "/push/subscriptions", sub),
   unsubscribe: (endpoint: string) => request<void>("DELETE", "/push/subscriptions", { endpoint }),
+  testPush: () =>
+    request<{ devices: number; sent: number; removed: number; errors: string[] }>("POST", "/push/test"),
   subscriptionCount: () => request<{ count: number }>("GET", "/push/subscriptions/count"),
 };
 

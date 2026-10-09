@@ -86,7 +86,9 @@ Ao criar ou editar um evento, o formulário consulta as sobreposições com **qu
 - Ao tocar na notificação, o app abre direto no evento (`/evento/:id`), com os botões **Aprovar**, **Recusar** e **Sugerir horário**.
 - Se uma assinatura de notificação responder 404 ou 410, ela é apagada automaticamente.
 
-Notificações enviadas: novo pedido · aprovado · recusado (com comentário) · sugestão de horário · horário alterado · cancelado · pedido de redefinição de senha.
+**Lembretes:** eventos confirmados avisam `REMINDER_MINUTES` antes do início (padrão 30; 0 = na hora); eventos de dia inteiro avisam às 8h do dia. "Nosso" avisa os dois; "só meu" avisa só o dono. Um lembrete por evento; mudar o horário gera um novo. Quem dispara é o cron-job.org, chamando `GET /api/cron/reminders?token=CRON_SECRET` a cada 5 minutos.
+
+Notificações enviadas: lembrete do evento · novo pedido · aprovado · recusado (com comentário) · sugestão de horário · horário alterado · cancelado · pedido de redefinição de senha.
 
 ---
 
@@ -123,7 +125,7 @@ events
   title, starts_at TIMESTAMPTZ, ends_at TIMESTAMPTZ, all_day BOOL,
   location NULL, notes NULL,
   status ('pending'|'confirmed'|'rejected'|'cancelled'),
-  rejection_comment NULL, decided_at NULL, created_at, updated_at
+  rejection_comment NULL, decided_at NULL, reminded_at NULL, created_at, updated_at
   INDEX (starts_at, ends_at), INDEX (status)
 
 push_subscriptions
@@ -174,21 +176,21 @@ Proteção contra CSRF: o cookie usa SameSite=Lax, e toda rota que altera dados 
 iPhone (PWA) ──HTTPS──▶ Vercel (React estático)
                           └─ rewrite /api/* ──▶ Render (FastAPI, gratuito)
                                                     └──▶ Supabase (Postgres)
-cron-job.org ── GET /api/health a cada 10 min ──▶ Render
+cron-job.org ── GET /api/cron/reminders a cada 5 min ──▶ Render
 ```
 
 - **Front:** Vite + React + TypeScript + Tailwind + date-fns, com `vite-plugin-pwa` (manifest + service worker que recebe as notificações push).
 - **Back:** FastAPI + SQLAlchemy 2 + Alembic + psycopg 3 + argon2-cffi + pywebpush.
 - O rewrite da Vercel faz o navegador enxergar um único domínio. Assim o cookie é "de primeira parte" e o Safari não o bloqueia.
 - O comando de start no Render roda `alembic upgrade head` antes de iniciar o `uvicorn`.
-- **Variáveis de ambiente do back:** `DATABASE_URL`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+- **Variáveis de ambiente do back:** `DATABASE_URL`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`, `REMINDER_MINUTES`.
 - **Scripts:** `app.scripts.create_users` (cria João e Carol com nome, WhatsApp e senha inicial), `app.scripts.reset_password <slug>` e `app.scripts.gen_vapid`.
 
 ---
 
 ## 8. Fora da v1
 
-Eventos que se repetem · lembretes antes do evento · sincronização com o Google Agenda · escolha de cores · eventos privados · visão de semana ou de dia · SMS automático.
+Eventos que se repetem · sincronização com o Google Agenda · escolha de cores · eventos privados · visão de semana ou de dia · SMS automático.
 
 ## 9. Decisões menores que assumi (revise)
 

@@ -44,6 +44,7 @@ export default function Profile() {
 
   const [pushHere, setPushHere] = useState<boolean | null>(null);
   const [pushError, setPushError] = useState("");
+  const [testMsg, setTestMsg] = useState("");
   const devices = useQuery({ queryKey: ["push-count"], queryFn: api.subscriptionCount });
 
   useEffect(() => {
@@ -112,6 +113,29 @@ export default function Profile() {
     }
   }
 
+  async function sendTest() {
+    setBusy("test");
+    setPushError("");
+    setTestMsg("");
+    try {
+      const r = await api.testPush();
+      devices.refetch();
+      if (r.devices === 0) {
+        setPushError("O servidor não conhece nenhum aparelho seu. Toque em \"Ativar neste aparelho\" e teste de novo.");
+      } else if (r.sent > 0 && r.errors.length === 0) {
+        setTestMsg(`Enviada para ${r.sent} aparelho(s). Deve chegar em alguns segundos. Bloqueie a tela para ver.`);
+      } else if (r.errors.length) {
+        setPushError(`O serviço de notificações recusou: ${r.errors[0]}`);
+      } else {
+        setPushError("Este aparelho tinha desativado as notificações. Toque em \"Ativar neste aparelho\" de novo.");
+      }
+    } catch (err) {
+      setPushError(err instanceof ApiError ? err.message : "Não deu para enviar o teste.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function logout() {
     await disablePush().catch(() => undefined); // este aparelho para de receber avisos desta conta
     await api.logout().catch(() => undefined);
@@ -170,7 +194,13 @@ export default function Profile() {
               {count === 1 ? "1 aparelho seu recebe avisos." : `${count} aparelhos seus recebem avisos.`}
             </p>
             <ErrorText>{pushError}</ErrorText>
-            <Button className="mt-3 w-full" variant={pushHere ? "quiet" : "primary"} onClick={togglePush}
+            {testMsg && <p className="mt-2 text-green">{testMsg}</p>}
+            {pushHere && (
+              <Button className="mt-3 w-full" onClick={sendTest} busy={busy === "test"}>
+                Enviar notificação de teste
+              </Button>
+            )}
+            <Button className="mt-3 w-full" variant={pushHere ? "ghost" : "primary"} onClick={togglePush}
               busy={busy === "push"} disabled={pushHere === null}>
               {pushHere ? "Desativar neste aparelho" : "Ativar neste aparelho"}
             </Button>
