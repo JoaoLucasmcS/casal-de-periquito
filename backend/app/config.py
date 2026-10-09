@@ -22,11 +22,19 @@ def _vapid_subject() -> str:
     return sub
 
 
+def _clean_key(name: str) -> str:
+    # Tolera colar a linha inteira do gen_vapid ("VAPID_PRIVATE_KEY=...") ou com aspas/espaços.
+    val = os.getenv(name, "").strip().strip('"').strip("'").strip()
+    if val.startswith(name + "="):
+        val = val[len(name) + 1:].strip()
+    return val
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str = _database_url()
-    vapid_public_key: str = os.getenv("VAPID_PUBLIC_KEY", "")
-    vapid_private_key: str = os.getenv("VAPID_PRIVATE_KEY", "")
+    vapid_public_key: str = _clean_key("VAPID_PUBLIC_KEY")
+    vapid_private_key: str = _clean_key("VAPID_PRIVATE_KEY")
     vapid_subject: str = _vapid_subject()
     # Em desenvolvimento local (http) o cookie não pode ser Secure.
     cookie_secure: bool = os.getenv("COOKIE_SECURE", "true").lower() == "true"

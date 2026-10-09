@@ -306,6 +306,34 @@ def test_finished_event_is_not_reminded_late(carol, pushes):
 
 
 def test_health_and_test_push_report_missing_keys(joao):
-    assert make_client().get("/api/health").json() == {"ok": True, "push_configurado": False}
+    h = make_client().get("/api/health").json()
+    assert h["push_configurado"] is False and h["push_problema"]
     r = joao.post("/api/push/test")
     assert r.status_code == 503 and "VAPID" in r.json()["detail"]
+
+
+def test_vapid_problem_detection(monkeypatch):
+    import subprocess, sys
+    from app import push
+    from app.config import settings
+    out = subprocess.check_output([sys.executable, "-m", "app.scripts.gen_vapid"]).decode()
+    priv = out.split("VAPID_PRIVATE_KEY=")[1].strip()
+    pub = out.split("VAPID_PUBLIC_KEY=")[1].split()[0]
+    def use(p, q):
+        monkeypatch.setattr(settings, "vapid_private_key", p, raising=False) if False else None
+        object.__setattr__(settings, "vapid_private_key", p)
+        object.__setattr__(settings, "vapid_public_key", q)
+    use(priv, pub);        assert push.vapid_problem() is None
+    use(pub, pub);         assert "mesmo valor" in push.vapid_problem()
+    use(priv[:-2], pub);   assert "inválida" in push.vapid_problem()
+    other = subprocess.check_output([sys.executable, "-m", "app.scripts.gen_vapid"]).decode()
+    use(priv, other.split("VAPID_PUBLIC_KEY=")[1].split()[0]); assert "par" in push.vapid_problem()
+    use("", "")
+
+
+def test_clean_key_accepts_pasted_line(monkeypatch):
+    from app.config import _clean_key
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", ' VAPID_PRIVATE_KEY=abc123 ')
+    assert _clean_key("VAPID_PRIVATE_KEY") == "abc123"
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", '"abc123"')
+    assert _clean_key("VAPID_PRIVATE_KEY") == "abc123"

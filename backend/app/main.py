@@ -27,7 +27,8 @@ async def csrf_guard(request: Request, call_next):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "push_configurado": push.configured()}
+    problem = push.vapid_problem() if push.configured() else "chaves VAPID ausentes"
+    return {"ok": True, "push_configurado": problem is None, "push_problema": problem}
 
 
 app.include_router(auth.router)
