@@ -122,7 +122,7 @@ export function EventSheet({ state, onClose, onSaved }: {
     : ev?.status === "rejected" ? `Ao salvar, o pedido vai de novo para ${partner}.`
     : null;
 
-  const input = "w-full min-h-12 rounded-xl border border-line bg-panel px-3 text-ink focus:border-ink focus:outline-none";
+  const input = "block w-full min-w-0 min-h-12 rounded-xl border border-line bg-panel px-3 text-ink focus:border-ink focus:outline-none";
 
   return (
     <Sheet title={sheetTitle} onClose={onClose}>
@@ -165,21 +165,25 @@ export function EventSheet({ state, onClose, onSaved }: {
           />
         )}
 
-        <div className="grid grid-cols-[1fr_auto] items-end gap-3">
-          <label className="block">
-            <span className="mb-1 block text-[15px] font-bold">Dia</span>
-            <input type="date" className={input} value={day} onChange={(e) => setDay(e.target.value)} required />
-          </label>
-          <label className="flex min-h-12 items-center gap-2 rounded-xl px-1">
-            <input type="checkbox" className="size-5 accent-[var(--color-green)]" checked={allDay}
-              onChange={(e) => setAllDay(e.target.checked)} />
-            <span className="font-bold">Dia inteiro</span>
-          </label>
-        </div>
+        <label className="block min-w-0">
+          <span className="mb-1 block text-[15px] font-bold">Dia</span>
+          <input type="date" className={input} value={day} onChange={(e) => setDay(e.target.value)} required />
+        </label>
+
+        <label className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-line bg-panel px-3">
+          <span className="font-bold">Dia inteiro</span>
+          <input
+            type="checkbox"
+            role="switch"
+            className="switch"
+            checked={allDay}
+            onChange={(e) => setAllDay(e.target.checked)}
+          />
+        </label>
 
         {!allDay && (
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+            <label className="block min-w-0">
               <span className="mb-1 block text-[15px] font-bold">Começa</span>
               <input type="time" className={input} value={start} required
                 onChange={(e) => {
@@ -192,7 +196,7 @@ export function EventSheet({ state, onClose, onSaved }: {
                   }
                 }} />
             </label>
-            <label className="block">
+            <label className="block min-w-0">
               <span className="mb-1 block text-[15px] font-bold">Termina</span>
               <input type="time" className={input} value={end} required onChange={(e) => setEnd(e.target.value)} />
             </label>

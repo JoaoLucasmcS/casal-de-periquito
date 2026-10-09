@@ -75,6 +75,54 @@ select {
   font-size: 16px; /* evita o zoom automático do Safari ao focar */
 }
 
+/* Safari do iPhone dá a data/hora uma largura mínima própria e centraliza o texto:
+   sem isso, os campos vazam da tela ou passam por cima do vizinho. */
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
+/* Interruptor estilo iOS para "Dia inteiro" */
+.switch {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+  background: var(--color-line);
+  transition: background 150ms;
+  cursor: pointer;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 150ms;
+}
+.switch:checked {
+  background: var(--color-green);
+}
+.switch:checked::after {
+  transform: translateX(20px);
+}
+
 @keyframes sheet-up {
   from {
     transform: translateY(100%);
