@@ -281,10 +281,12 @@ def test_reminder_waits_until_lead_time(carol, pushes):
     assert _cron().json()["lembretes_enviados"] == 0          # faltam 90 min, lembrete é 30 min antes
 
 
-def test_personal_reminder_only_owner(carol, pushes):
+def test_personal_reminder_goes_to_both(carol, pushes):
     _event_in(carol, 10, kind="personal", title="Academia")
     _cron()
-    assert [p["to"] for p in pushes] == ["carol"]
+    by = {p["to"]: p["title"] for p in pushes}
+    assert by["carol"].startswith("Em ") and by["carol"].endswith("Academia")
+    assert by["joao"].endswith("Academia (Carol)")
 
 
 def test_reminder_resets_when_time_changes(joao, carol, pushes):
@@ -372,8 +374,8 @@ def test_daily_digest_at_8(joao, carol, pushes, monkeypatch):
     r = _cron().json()
     assert r["resumos_enviados"] == 2
     msgs = {p["to"]: p for p in pushes if p["title"].startswith("Hoje")}
-    assert msgs["carol"]["title"] == "Hoje: Academia 18h, Cinema 21h"
-    assert msgs["joao"]["title"] == "Hoje: Aniversário da vó (dia todo), Cinema 21h"   # Academia é só da Carol
+    assert msgs["carol"]["title"] == "Hoje: Aniversário da vó (João) (dia todo), Academia 18h, Cinema 21h"
+    assert msgs["joao"]["title"] == "Hoje: Aniversário da vó (dia todo), Academia (Carol) 18h, Cinema 21h"
     pushes.clear()
     _at_sp(monkeypatch, 8, 5, days=1)
     assert _cron().json()["resumos_enviados"] == 0      # só uma vez por dia

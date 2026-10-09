@@ -86,9 +86,9 @@ Ao criar ou editar um evento, o formulário consulta as sobreposições com **qu
 - Ao tocar na notificação, o app abre direto no evento (`/evento/:id`), com os botões **Aprovar**, **Recusar** e **Sugerir horário**.
 - Se uma assinatura de notificação responder 404 ou 410, ela é apagada automaticamente.
 
-**Resumo do dia:** às `DIGEST_HOUR` (padrão 8h), cada um recebe "Hoje: Academia 18h, Cinema 21h" com os eventos confirmados do dia (os "nossos" e os "só meus" dele) e quantos pedidos esperam resposta. Dia vazio não gera aviso; se o servidor ficou fora do ar, o resumo é enviado até as 12h.
+**Resumo do dia:** às `DIGEST_HOUR` (padrão 8h), cada um recebe "Hoje: Cinema 21h, Academia (Carol) 18h" com todos os eventos confirmados do dia (os "nossos" e os "só meus" dos dois; os do outro vêm com o nome) e quantos pedidos esperam resposta. Dia vazio não gera aviso; se o servidor ficou fora do ar, o resumo é enviado até as 12h.
 
-**Lembretes:** eventos confirmados com horário avisam `REMINDER_MINUTES` antes do início (padrão 30; 0 = na hora); eventos de dia inteiro aparecem só no resumo. "Nosso" avisa os dois; "só meu" avisa só o dono. Um lembrete por evento; mudar o horário gera um novo. Quem dispara é o cron-job.org, chamando `GET /api/cron/reminders?token=CRON_SECRET` a cada 5 minutos.
+**Lembretes:** eventos confirmados com horário avisam os dois `REMINDER_MINUTES` antes do início (padrão 30; 0 = na hora), inclusive os "só meu" (o outro recebe com o nome do dono); eventos de dia inteiro aparecem só no resumo. Um lembrete por evento; mudar o horário gera um novo. Quem dispara é o cron-job.org, chamando `GET /api/cron/reminders?token=CRON_SECRET` a cada 5 minutos.
 
 Notificações enviadas: resumo do dia · lembrete do evento · novo pedido · aprovado · recusado (com comentário) · sugestão de horário · horário alterado · cancelado · pedido de redefinição de senha.
 

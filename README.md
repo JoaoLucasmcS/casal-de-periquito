@@ -138,10 +138,11 @@ O token pode ir na URL (`?token=...`) ou num header chamado `token` (seção Hea
 Nos dois casos, o valor precisa ser igual ao `CRON_SECRET`, caractere por caractere.
 
 O que esse cronjob dispara:
-- **Resumo do dia**, às 8h (ou `DIGEST_HOUR`): "Hoje: Academia 18h, Cinema 21h", com os eventos confirmados
-  do dia (os "nossos" e os "só meus" de quem recebe) e quantos pedidos esperam resposta. Dia vazio não gera aviso.
-- **Lembrete**, `REMINDER_MINUTES` antes do início (padrão 30): eventos confirmados com horário. O "nosso"
-  avisa os dois; o "só meu" avisa só o dono. Eventos de dia inteiro aparecem só no resumo.
+- **Resumo do dia**, às 8h (ou `DIGEST_HOUR`): "Hoje: Cinema 21h, Academia (Carol) 18h", com todos os eventos
+  confirmados do dia, inclusive os "só meus" do outro (com o nome dele), e quantos pedidos esperam resposta.
+  Dia vazio não gera aviso.
+- **Lembrete**, `REMINDER_MINUTES` antes do início (padrão 30): eventos confirmados com horário, para os dois,
+  inclusive nos "só meu" ("Em 30 min: Academia (Carol)"). Eventos de dia inteiro aparecem só no resumo.
 
 ### 2.7 Instalar nos iPhones (cada um no seu)
 

@@ -7,12 +7,12 @@ o servidor acordado.
 Cada chamada faz duas coisas:
 
 1. Resumo do dia (uma vez por dia, a partir de DIGEST_HOUR, padrão 8h de São Paulo):
-   "Hoje: Academia 18h, Cinema 21h" para cada um, com os eventos confirmados do dia
-   (os "nossos" e os "só meus" de quem recebe) e quantos pedidos esperam resposta.
+   "Hoje: Cinema 21h, Academia (Carol) 18h" para cada um, com todos os eventos confirmados do dia:
+   os "nossos" e os "só meus" dos dois (os do outro vêm com o nome) e quantos pedidos esperam resposta.
    Se o dia estiver vazio, não manda nada. Se o servidor ficou fora do ar, manda até as 12h.
 
 2. Lembrete antes do evento (REMINDER_MINUTES antes do início, padrão 30; 0 = na hora):
-   só para eventos confirmados com horário. "Nosso" avisa os dois; "só meu" avisa o dono.
+   só para eventos confirmados com horário. Avisa os dois, inclusive nos "só meu" (o outro recebe com o nome do dono).
    Eventos de dia inteiro já aparecem no resumo, então não geram lembrete separado.
    Se o evento já acabou (servidor fora do ar), o lembrete é descartado.
 """
@@ -20,7 +20,7 @@ import secrets
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 
 from .. import push
@@ -54,7 +54,6 @@ def digest_for(db: DbSession, user: User, start: datetime, end: datetime) -> tup
             Event.status == STATUS_CONFIRMED,
             Event.starts_at < end,
             Event.ends_at > start,
-            or_(Event.kind == KIND_SHARED, (Event.kind == KIND_PERSONAL) & (Event.owner_id == user.id)),
         )
         .order_by(Event.all_day.desc(), Event.starts_at)
     ).all()
@@ -69,10 +68,13 @@ def digest_for(db: DbSession, user: User, start: datetime, end: datetime) -> tup
 
     parts = []
     for e in events:
+        name = e.title
+        if e.kind == KIND_PERSONAL and e.owner_id != user.id:
+            name = f"{e.title} ({e.owner.display_name})"
         if e.all_day or e.starts_at < start:
-            parts.append(f"{e.title} (dia todo)")
+            parts.append(f"{name} (dia todo)")
         else:
-            parts.append(f"{e.title} {_hour(e.starts_at)}")
+            parts.append(f"{name} {_hour(e.starts_at)}")
     if parts:
         title = "Hoje: " + ", ".join(parts)
         if len(title) > 110:  # notificação no iPhone corta textos longos
@@ -112,14 +114,17 @@ def send_digests(db: DbSession, now: datetime) -> int:
 
 # ---------- lembrete antes do evento ----------
 
-def reminder_text(ev: Event, now: datetime) -> tuple[str, str]:
+def reminder_text(ev: Event, now: datetime, for_user_id: int) -> tuple[str, str]:
     minutes = round((ev.starts_at - now).total_seconds() / 60)
+    title = ev.title
+    if ev.kind == KIND_PERSONAL and ev.owner_id != for_user_id:
+        title = f"{ev.title} ({ev.owner.display_name})"
     if minutes <= 1:
-        head = f"Agora: {ev.title}"
+        head = f"Agora: {title}"
     elif minutes < 60:
-        head = f"Em {minutes} min: {ev.title}"
+        head = f"Em {minutes} min: {title}"
     else:
-        head = f"{ev.title} · {fmt_when(ev.starts_at, False)}"
+        head = f"{title} · {fmt_when(ev.starts_at, False)}"
     return head, f"Começa às {_hour(ev.starts_at)}" + (f" · {ev.location}" if ev.location else "")
 
 
@@ -142,8 +147,8 @@ def send_reminders(db: DbSession, now: datetime) -> tuple[int, int]:
         if ev.ends_at <= now:
             skipped += 1  # já acabou: não manda aviso atrasado
             continue
-        title, body = reminder_text(ev, now)
-        for uid in (users if ev.kind == KIND_SHARED else [ev.owner_id]):
+        for uid in users:  # avisa os dois, inclusive nos "só meu"
+            title, body = reminder_text(ev, now, uid)
             push.send_to_user(uid, title, body, f"/evento/{ev.id}", f"lembrete-{ev.id}")
         sent += 1
     db.commit()
