@@ -3,7 +3,8 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from .routers import auth, events, push_subs
+from . import push
+from .routers import auth, cron, events, push_subs
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,9 +27,10 @@ async def csrf_guard(request: Request, call_next):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "push_configurado": push.configured()}
 
 
 app.include_router(auth.router)
 app.include_router(events.router)
 app.include_router(push_subs.router)
+app.include_router(cron.router)

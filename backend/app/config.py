@@ -12,14 +12,28 @@ def _database_url() -> str:
     return url
 
 
+def _vapid_subject() -> str:
+    # A Apple e o pywebpush exigem "mailto:email" ou "https://site". Aceita o e-mail puro e corrige.
+    sub = os.getenv("VAPID_SUBJECT", "").strip()
+    if not sub:
+        return "mailto:voce@example.com"
+    if not sub.startswith(("mailto:", "https://")):
+        sub = "mailto:" + sub
+    return sub
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str = _database_url()
     vapid_public_key: str = os.getenv("VAPID_PUBLIC_KEY", "")
     vapid_private_key: str = os.getenv("VAPID_PRIVATE_KEY", "")
-    vapid_subject: str = os.getenv("VAPID_SUBJECT", "mailto:voce@example.com")
+    vapid_subject: str = _vapid_subject()
     # Em desenvolvimento local (http) o cookie não pode ser Secure.
     cookie_secure: bool = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+    # Lembrete: quantos minutos antes do início avisar (0 = na hora). Dia inteiro: às 8h do dia.
+    reminder_minutes: int = int(os.getenv("REMINDER_MINUTES", "30"))
+    # Senha da URL que o cron-job.org chama para disparar os lembretes.
+    cron_secret: str = os.getenv("CRON_SECRET", "")
     session_days: int = 90
     app_name: str = "Casal de Periquito"
     timezone: str = "America/Sao_Paulo"

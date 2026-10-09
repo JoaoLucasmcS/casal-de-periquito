@@ -220,6 +220,7 @@ def update_event(
 
     if time_changed:
         validate_times(new_start, new_end)
+        ev.reminded_at = None  # novo horário → novo lembrete
     ev.starts_at, ev.ends_at, ev.all_day = new_start, new_end, new_all_day
     if "title" in fields and body.title:
         ev.title = body.title.strip()

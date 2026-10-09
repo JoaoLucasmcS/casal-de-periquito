@@ -19,3 +19,7 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: REMINDER_MINUTES
+        value: "30"

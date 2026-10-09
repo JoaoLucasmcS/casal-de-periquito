@@ -239,3 +239,73 @@ def test_push_subscription_moves_between_users(joao, carol):
     assert carol.get("/api/push/subscriptions/count").json()["count"] == 1
     assert carol.request("DELETE", "/api/push/subscriptions", json={"endpoint": sub["endpoint"]}).status_code == 204
     assert carol.get("/api/push/subscriptions/count").json()["count"] == 0
+
+
+# ---------- lembretes e diagnóstico ----------
+
+def _cron(token="segredo-do-cron"):
+    return make_client().get("/api/cron/reminders", params={"token": token})
+
+
+def _event_in(client, minutes, kind="shared", title="Cinema", all_day=False):
+    start = datetime.now(SP).replace(second=0, microsecond=0) + timedelta(minutes=minutes)
+    end = start + timedelta(hours=2)
+    if all_day:
+        start = start.replace(hour=0, minute=0)
+        end = start + timedelta(days=1)
+    return client.post("/api/events", json={
+        "kind": kind, "title": title, "starts_at": start.isoformat(), "ends_at": end.isoformat(), "all_day": all_day,
+    }).json()
+
+
+def test_cron_requires_token():
+    assert _cron("errado").status_code == 403
+
+
+def test_reminder_for_confirmed_shared_goes_to_both(joao, carol, pushes):
+    ev = _event_in(joao, 20)
+    pushes.clear()
+    assert _cron().json()["lembretes_enviados"] == 0          # pendente não lembra
+    carol.post(f"/api/events/{ev['id']}/approve")
+    pushes.clear()
+    assert _cron().json()["lembretes_enviados"] == 1
+    assert sorted(p["to"] for p in pushes) == ["carol", "joao"]
+    assert pushes[0]["title"].startswith("Em ") and "Cinema" in pushes[0]["title"]
+    pushes.clear()
+    assert _cron().json()["lembretes_enviados"] == 0          # não repete
+    assert pushes == []
+
+
+def test_reminder_waits_until_lead_time(carol, pushes):
+    _event_in(carol, 90, kind="personal", title="Academia")
+    assert _cron().json()["lembretes_enviados"] == 0          # faltam 90 min, lembrete é 30 min antes
+
+
+def test_personal_reminder_only_owner(carol, pushes):
+    _event_in(carol, 10, kind="personal", title="Academia")
+    _cron()
+    assert [p["to"] for p in pushes] == ["carol"]
+
+
+def test_reminder_resets_when_time_changes(joao, carol, pushes):
+    ev = _event_in(carol, 10, kind="personal", title="Dentista")
+    _cron()
+    later = datetime.now(SP).replace(second=0, microsecond=0) + timedelta(minutes=15)
+    carol.patch(f"/api/events/{ev['id']}", json={
+        "starts_at": later.isoformat(), "ends_at": (later + timedelta(hours=1)).isoformat()})
+    pushes.clear()
+    assert _cron().json()["lembretes_enviados"] == 1
+
+
+def test_finished_event_is_not_reminded_late(carol, pushes):
+    start = datetime.now(SP) - timedelta(hours=3)
+    carol.post("/api/events", json={"kind": "personal", "title": "Antigo",
+               "starts_at": start.isoformat(), "ends_at": (start + timedelta(hours=1)).isoformat()})
+    r = _cron().json()
+    assert r["lembretes_enviados"] == 0 and r["descartados"] == 1 and pushes == []
+
+
+def test_health_and_test_push_report_missing_keys(joao):
+    assert make_client().get("/api/health").json() == {"ok": True, "push_configurado": False}
+    r = joao.post("/api/push/test")
+    assert r.status_code == 503 and "VAPID" in r.json()["detail"]

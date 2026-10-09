@@ -6,6 +6,8 @@ import tempfile
 _tmp = pathlib.Path(tempfile.mkdtemp()) / "test.db"
 os.environ["DATABASE_URL"] = os.getenv("TEST_DATABASE_URL", f"sqlite:///{_tmp}")
 os.environ.setdefault("VAPID_PUBLIC_KEY", "test-public-key")
+os.environ.setdefault("CRON_SECRET", "segredo-do-cron")
+os.environ.setdefault("REMINDER_MINUTES", "30")
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402

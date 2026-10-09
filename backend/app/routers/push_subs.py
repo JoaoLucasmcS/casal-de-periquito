@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session as DbSession
 
+from .. import push
 from ..config import settings
 from ..db import get_db
 from ..models import PushSubscription, User
@@ -46,3 +47,12 @@ def unsubscribe(body: PushUnsubIn, me: User = Depends(current_user), db: DbSessi
 def count(me: User = Depends(current_user), db: DbSession = Depends(get_db)):
     n = db.scalar(select(func.count()).select_from(PushSubscription).where(PushSubscription.user_id == me.id))
     return {"count": n or 0}
+
+
+@router.post("/test")
+def send_test(me: User = Depends(current_user)):
+    """Botão "Enviar notificação de teste" do perfil: manda para os aparelhos de quem está logado."""
+    if not push.configured():
+        raise HTTPException(503, "O servidor está sem as chaves VAPID (VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY no Render).")
+    r = push.send_to_user(me.id, "Teste do Casal de Periquito 🦜", "Se você está lendo isto, as notificações funcionam!", "/perfil", "teste")
+    return {"devices": r.devices, "sent": r.sent, "removed": r.removed, "errors": r.errors}
